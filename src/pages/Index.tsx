@@ -245,6 +245,59 @@ _____________________                _____________________
     return num.toString();
   };
 
+  const downloadPaymentSchedule = () => {
+    const scheduleText = `
+════════════════════════════════════════════════════════════════════════════════
+                           ГРАФИК ПЛАТЕЖЕЙ ПО ЗАЙМУ
+════════════════════════════════════════════════════════════════════════════════
+
+Дата формирования: ${new Date().toLocaleDateString('ru-RU')}
+
+────────────────────────────────────────────────────────────────────────────────
+                            ПАРАМЕТРЫ ЗАЙМА
+────────────────────────────────────────────────────────────────────────────────
+
+Сумма займа:              ${loanAmount.toLocaleString('ru-RU')} рублей
+Срок займа:               ${loanDays} дней
+Процентная ставка:        2% в день
+Сумма процентов:          ${loan.totalInterest.toLocaleString('ru-RU')} рублей
+ОБЩАЯ СУММА К ВОЗВРАТУ:   ${loan.totalAmount.toLocaleString('ru-RU')} рублей
+Ежедневный платёж:        ${loan.dailyPayment.toLocaleString('ru-RU')} рублей
+
+════════════════════════════════════════════════════════════════════════════════
+                          ДЕТАЛЬНЫЙ ГРАФИК ВЫПЛАТ
+════════════════════════════════════════════════════════════════════════════════
+
+┌──────┬─────────────┬──────────────────┬─────────────┬─────────────────┐
+│ День │   Платёж    │  Основной долг   │  Проценты   │     Остаток     │
+├──────┼─────────────┼──────────────────┼─────────────┼─────────────────┤
+${schedule.map(item => 
+  `│ ${String(item.day).padStart(4)} │ ${String(item.payment.toLocaleString('ru-RU') + ' ₽').padEnd(11)} │ ${String(item.principal.toLocaleString('ru-RU') + ' ₽').padEnd(16)} │ ${String(item.interest.toLocaleString('ru-RU') + ' ₽').padEnd(11)} │ ${String(item.balance.toLocaleString('ru-RU') + ' ₽').padEnd(15)} │`
+).join('\n')}
+└──────┴─────────────┴──────────────────┴─────────────┴─────────────────┘
+
+════════════════════════════════════════════════════════════════════════════════
+                              ИТОГОВЫЕ ДАННЫЕ
+════════════════════════════════════════════════════════════════════════════════
+
+Всего платежей:           ${loanDays}
+Общая сумма выплат:       ${loan.totalAmount.toLocaleString('ru-RU')} рублей
+Переплата по процентам:   ${loan.totalInterest.toLocaleString('ru-RU')} рублей
+
+════════════════════════════════════════════════════════════════════════════════
+                        ООО "МикроФинанс" © 2024
+════════════════════════════════════════════════════════════════════════════════
+    `;
+
+    const blob = new Blob([scheduleText], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `График_платежей_${loanAmount}_на_${loanDays}_дней.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const loan = calculateLoan();
   const schedule = generatePaymentSchedule();
 
@@ -421,6 +474,16 @@ _____________________                _____________________
                       </tbody>
                     </table>
                   </div>
+                </div>
+
+                <div className="mt-6">
+                  <Button
+                    onClick={downloadPaymentSchedule}
+                    className="w-full bg-gradient-to-r from-primary to-secondary hover:opacity-90 text-base py-6"
+                  >
+                    <Icon name="Download" className="mr-2" size={20} />
+                    Скачать график платежей
+                  </Button>
                 </div>
               </CardContent>
             </Card>
