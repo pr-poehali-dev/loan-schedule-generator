@@ -34,6 +34,7 @@ const Index = () => {
   const [loanAmount, setLoanAmount] = useState<number>(50000);
   const [loanDays, setLoanDays] = useState<number>(30);
   const scheduleRef = useRef<HTMLDivElement>(null);
+  const contractRef = useRef<HTMLDivElement>(null);
   const [contractData, setContractData] = useState<ContractData>({
     fullName: '',
     birthDate: '',
