@@ -283,41 +283,52 @@ ________________________________________________________________________________
     if (!scheduleRef.current) return;
 
     try {
-      const canvas = await html2canvas(scheduleRef.current, {
-        scale: 2,
+      const element = scheduleRef.current;
+      
+      const canvas = await html2canvas(element, {
+        scale: 3,
         backgroundColor: '#ffffff',
         logging: false,
-        useCORS: true
+        useCORS: true,
+        allowTaint: true,
+        scrollY: -window.scrollY,
+        scrollX: -window.scrollX,
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight
       });
 
-      const imgData = canvas.toDataURL('image/png');
+      const imgData = canvas.toDataURL('image/jpeg', 1.0);
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
-        format: 'a4'
+        format: 'a4',
+        compress: true
       });
 
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pdfWidth;
-      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
-
+      const imgWidth = pdfWidth - 10;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      const margin = 5;
       let heightLeft = imgHeight;
-      let position = 0;
+      let position = margin;
 
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pdfHeight;
+      pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight, undefined, 'FAST');
+      heightLeft -= (pdfHeight - 2 * margin);
 
       while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
+        position = heightLeft - imgHeight + margin;
         pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pdfHeight;
+        pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight, undefined, 'FAST');
+        heightLeft -= (pdfHeight - 2 * margin);
       }
 
-      pdf.save(`График_платежей_${loanAmount}_на_${loanDays}_дней.pdf`);
+      const fileName = `График_платежей_${loanAmount}_руб_${loanDays}_дней.pdf`;
+      pdf.save(fileName);
     } catch (error) {
       console.error('Ошибка при создании PDF:', error);
+      alert('Ошибка при создании файла. Попробуйте ещё раз.');
     }
   };
 
