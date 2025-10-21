@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Icon from '@/components/ui/icon';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 interface PaymentScheduleItem {
   day: number;
@@ -31,6 +33,7 @@ interface ContractData {
 const Index = () => {
   const [loanAmount, setLoanAmount] = useState<number>(50000);
   const [loanDays, setLoanDays] = useState<number>(30);
+  const scheduleRef = useRef<HTMLDivElement>(null);
   const [contractData, setContractData] = useState<ContractData>({
     fullName: '',
     birthDate: '',
@@ -276,57 +279,46 @@ ________________________________________________________________________________
     return num.toString();
   };
 
-  const downloadPaymentSchedule = () => {
-    const scheduleText = `
-════════════════════════════════════════════════════════════════════════════════
-                           ГРАФИК ПЛАТЕЖЕЙ ПО ЗАЙМУ
-════════════════════════════════════════════════════════════════════════════════
+  const downloadPaymentSchedule = async () => {
+    if (!scheduleRef.current) return;
 
-Дата формирования: ${new Date().toLocaleDateString('ru-RU')}
+    try {
+      const canvas = await html2canvas(scheduleRef.current, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        logging: false,
+        useCORS: true
+      });
 
-────────────────────────────────────────────────────────────────────────────────
-                            ПАРАМЕТРЫ ЗАЙМА
-────────────────────────────────────────────────────────────────────────────────
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
 
-Сумма займа:              ${loanAmount.toLocaleString('ru-RU')} рублей
-Срок займа:               ${loanDays} дней
-Процентная ставка:        2% в день
-Сумма процентов:          ${loan.totalInterest.toLocaleString('ru-RU')} рублей
-ОБЩАЯ СУММА К ВОЗВРАТУ:   ${loan.totalAmount.toLocaleString('ru-RU')} рублей
-Ежедневный платёж:        ${loan.dailyPayment.toLocaleString('ru-RU')} рублей
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pdfWidth;
+      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
 
-════════════════════════════════════════════════════════════════════════════════
-                          ДЕТАЛЬНЫЙ ГРАФИК ВЫПЛАТ
-════════════════════════════════════════════════════════════════════════════════
+      let heightLeft = imgHeight;
+      let position = 0;
 
-┌──────┬──────────────┬──────────────────┬──────────────┬──────────────────┐
-│ День │   Платёж     │  Основной долг   │  Проценты    │     Остаток      │
-├──────┼──────────────┼──────────────────┼──────────────┼──────────────────┤
-${schedule.map(item => 
-  `│ ${String(item.day).padStart(4)} │ ${(item.payment.toLocaleString('ru-RU') + ' руб.').padEnd(12)} │ ${(item.principal.toLocaleString('ru-RU') + ' руб.').padEnd(16)} │ ${(item.interest.toLocaleString('ru-RU') + ' руб.').padEnd(12)} │ ${(item.balance.toLocaleString('ru-RU') + ' руб.').padEnd(16)} │`
-).join('\n')}
-└──────┴──────────────┴──────────────────┴──────────────┴──────────────────┘
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pdfHeight;
 
-════════════════════════════════════════════════════════════════════════════════
-                              ИТОГОВЫЕ ДАННЫЕ
-════════════════════════════════════════════════════════════════════════════════
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pdfHeight;
+      }
 
-Всего платежей:           ${loanDays}
-Общая сумма выплат:       ${loan.totalAmount.toLocaleString('ru-RU')} рублей
-Переплата по процентам:   ${loan.totalInterest.toLocaleString('ru-RU')} рублей
-
-════════════════════════════════════════════════════════════════════════════════
-                   ООО "ЭКОРРА ФИНАНСОВЫЙ ЦЕНТР" © 2024
-════════════════════════════════════════════════════════════════════════════════
-    `;
-
-    const blob = new Blob([scheduleText], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `График_платежей_${loanAmount}_на_${loanDays}_дней.txt`;
-    link.click();
-    URL.revokeObjectURL(url);
+      pdf.save(`График_платежей_${loanAmount}_на_${loanDays}_дней.pdf`);
+    } catch (error) {
+      console.error('Ошибка при создании PDF:', error);
+    }
   };
 
   const loan = calculateLoan();
@@ -450,60 +442,93 @@ ${schedule.map(item =>
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-6">
-                <div className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="bg-gradient-to-br from-blue-50 to-white p-4 rounded-lg border border-blue-200">
-                    <p className="text-xs text-muted-foreground mb-1">Сумма займа</p>
-                    <p className="text-xl font-bold text-primary">{loanAmount.toLocaleString('ru-RU')} ₽</p>
+                <div ref={scheduleRef} className="bg-white p-6">
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-bold text-center text-primary mb-2">
+                      ГРАФИК ПЛАТЕЖЕЙ ПО ЗАЙМУ
+                    </h2>
+                    <p className="text-center text-sm text-muted-foreground">
+                      ООО "ЭКОРРА ФИНАНСОВЫЙ ЦЕНТР"
+                    </p>
+                    <p className="text-center text-xs text-muted-foreground mt-1">
+                      Дата формирования: {new Date().toLocaleDateString('ru-RU')}
+                    </p>
                   </div>
-                  <div className="bg-gradient-to-br from-green-50 to-white p-4 rounded-lg border border-green-200">
-                    <p className="text-xs text-muted-foreground mb-1">Общая сумма</p>
-                    <p className="text-xl font-bold text-green-600">{loan.totalAmount.toLocaleString('ru-RU')} ₽</p>
-                  </div>
-                  <div className="bg-gradient-to-br from-purple-50 to-white p-4 rounded-lg border border-purple-200">
-                    <p className="text-xs text-muted-foreground mb-1">Проценты</p>
-                    <p className="text-xl font-bold text-purple-600">{loan.totalInterest.toLocaleString('ru-RU')} ₽</p>
-                  </div>
-                  <div className="bg-gradient-to-br from-orange-50 to-white p-4 rounded-lg border border-orange-200">
-                    <p className="text-xs text-muted-foreground mb-1">Срок</p>
-                    <p className="text-xl font-bold text-orange-600">{loanDays} дней</p>
-                  </div>
-                </div>
 
-                <div className="overflow-x-auto">
-                  <div className="max-h-[500px] overflow-y-auto rounded-lg border border-slate-200">
-                    <table className="w-full text-sm">
-                      <thead className="sticky top-0 bg-gradient-to-r from-primary to-secondary text-white">
-                        <tr>
-                          <th className="p-3 text-left font-semibold">День</th>
-                          <th className="p-3 text-right font-semibold">Платёж</th>
-                          <th className="p-3 text-right font-semibold">Основной долг</th>
-                          <th className="p-3 text-right font-semibold">Проценты</th>
-                          <th className="p-3 text-right font-semibold">Остаток</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {schedule.map((item, index) => (
-                          <tr
-                            key={item.day}
-                            className={`border-b hover:bg-blue-50 transition-colors ${
-                              index % 2 === 0 ? 'bg-white' : 'bg-slate-50'
-                            }`}
-                          >
-                            <td className="p-3 font-medium">{item.day}</td>
-                            <td className="p-3 text-right font-semibold text-green-600">
-                              {item.payment.toLocaleString('ru-RU')} ₽
-                            </td>
-                            <td className="p-3 text-right">{item.principal.toLocaleString('ru-RU')} ₽</td>
-                            <td className="p-3 text-right text-orange-600">
-                              {item.interest.toLocaleString('ru-RU')} ₽
-                            </td>
-                            <td className="p-3 text-right font-medium">
-                              {item.balance.toLocaleString('ru-RU')} ₽
-                            </td>
+                  <div className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-gradient-to-br from-blue-50 to-white p-4 rounded-lg border border-blue-200">
+                      <p className="text-xs text-muted-foreground mb-1">Сумма займа</p>
+                      <p className="text-xl font-bold text-primary">{loanAmount.toLocaleString('ru-RU')} ₽</p>
+                    </div>
+                    <div className="bg-gradient-to-br from-green-50 to-white p-4 rounded-lg border border-green-200">
+                      <p className="text-xs text-muted-foreground mb-1">Общая сумма</p>
+                      <p className="text-xl font-bold text-green-600">{loan.totalAmount.toLocaleString('ru-RU')} ₽</p>
+                    </div>
+                    <div className="bg-gradient-to-br from-purple-50 to-white p-4 rounded-lg border border-purple-200">
+                      <p className="text-xs text-muted-foreground mb-1">Проценты</p>
+                      <p className="text-xl font-bold text-purple-600">{loan.totalInterest.toLocaleString('ru-RU')} ₽</p>
+                    </div>
+                    <div className="bg-gradient-to-br from-orange-50 to-white p-4 rounded-lg border border-orange-200">
+                      <p className="text-xs text-muted-foreground mb-1">Срок</p>
+                      <p className="text-xl font-bold text-orange-600">{loanDays} дней</p>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <div className="max-h-[500px] overflow-y-auto rounded-lg border border-slate-200">
+                      <table className="w-full text-sm">
+                        <thead className="sticky top-0 bg-gradient-to-r from-primary to-secondary text-white">
+                          <tr>
+                            <th className="p-3 text-left font-semibold">День</th>
+                            <th className="p-3 text-right font-semibold">Платёж</th>
+                            <th className="p-3 text-right font-semibold">Основной долг</th>
+                            <th className="p-3 text-right font-semibold">Проценты</th>
+                            <th className="p-3 text-right font-semibold">Остаток</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {schedule.map((item, index) => (
+                            <tr
+                              key={item.day}
+                              className={`border-b hover:bg-blue-50 transition-colors ${
+                                index % 2 === 0 ? 'bg-white' : 'bg-slate-50'
+                              }`}
+                            >
+                              <td className="p-3 font-medium">{item.day}</td>
+                              <td className="p-3 text-right font-semibold text-green-600">
+                                {item.payment.toLocaleString('ru-RU')} ₽
+                              </td>
+                              <td className="p-3 text-right">{item.principal.toLocaleString('ru-RU')} ₽</td>
+                              <td className="p-3 text-right text-orange-600">
+                                {item.interest.toLocaleString('ru-RU')} ₽
+                              </td>
+                              <td className="p-3 text-right font-medium">
+                                {item.balance.toLocaleString('ru-RU')} ₽
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 grid grid-cols-3 gap-4 border-t pt-4">
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground mb-1">Всего платежей</p>
+                      <p className="text-lg font-bold">{loanDays}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground mb-1">Общая сумма выплат</p>
+                      <p className="text-lg font-bold text-green-600">{loan.totalAmount.toLocaleString('ru-RU')} ₽</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground mb-1">Переплата</p>
+                      <p className="text-lg font-bold text-orange-600">{loan.totalInterest.toLocaleString('ru-RU')} ₽</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 text-center text-xs text-muted-foreground border-t pt-4">
+                    <p>© 2024 ООО "ЭКОРРА ФИНАНСОВЫЙ ЦЕНТР"</p>
                   </div>
                 </div>
 
@@ -513,7 +538,7 @@ ${schedule.map(item =>
                     className="w-full bg-gradient-to-r from-primary to-secondary hover:opacity-90 text-base py-6"
                   >
                     <Icon name="Download" className="mr-2" size={20} />
-                    Скачать график платежей
+                    Скачать график платежей (PDF)
                   </Button>
                 </div>
               </CardContent>
