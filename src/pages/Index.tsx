@@ -95,12 +95,199 @@ const Index = () => {
     });
   };
 
-  const downloadContract = () => {
+  const downloadContract = async () => {
     if (!contractData.fullName || !contractData.birthDate || !contractData.passportSeries || !contractData.passportNumber || !contractData.address || !contractData.phone) {
       alert('Пожалуйста, заполните все обязательные поля');
       return;
     }
 
+    const contractNumber = `${loanAmount}-${Date.now().toString().slice(-6)}`;
+    const returnDate = new Date(contractData.contractDate);
+    returnDate.setDate(returnDate.getDate() + loanDays);
+    const returnDateStr = returnDate.toLocaleDateString('ru-RU');
+    
+    try {
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 20;
+      const lineHeight = 5;
+      let y = margin;
+
+      const addText = (text: string, size: number = 10, align: 'left' | 'center' | 'right' = 'left') => {
+        pdf.setFontSize(size);
+        
+        if (y > pageHeight - margin) {
+          pdf.addPage();
+          y = margin;
+        }
+
+        const lines = pdf.splitTextToSize(text, pageWidth - 2 * margin);
+        
+        lines.forEach((line: string) => {
+          if (y > pageHeight - margin) {
+            pdf.addPage();
+            y = margin;
+          }
+          
+          if (align === 'center') {
+            pdf.text(line, pageWidth / 2, y, { align: 'center' });
+          } else if (align === 'right') {
+            pdf.text(line, pageWidth - margin, y, { align: 'right' });
+          } else {
+            pdf.text(line, margin, y);
+          }
+          y += lineHeight;
+        });
+      };
+
+      const addLine = () => {
+        pdf.line(margin, y, pageWidth - margin, y);
+        y += lineHeight;
+      };
+
+      pdf.setFont('helvetica', 'bold');
+      addText('ДОГОВОР ЗАЙМА №' + contractNumber, 14, 'center');
+      pdf.setFont('helvetica', 'normal');
+      y += 5;
+      pdf.text('г. Москва', margin, y);
+      pdf.text(contractData.contractDate, pageWidth - margin, y, { align: 'right' });
+      y += 10;
+      addLine();
+      y += 3;
+
+      addText('Общество с ограниченной ответственностью "ЭКОРРА ФИНАНСОВЫЙ ЦЕНТР", именуемое в дальнейшем "ЗАЙМОДАВЕЦ", в лице Директора ________________________, действующего на основании Устава, с одной стороны, и');
+      y += 2;
+      addText(contractData.fullName + ', именуемый(ая) в дальнейшем "ЗАЕМЩИК", с другой стороны, вместе именуемые "СТОРОНЫ", заключили настоящий Договор о нижеследующем:');
+      y += 5;
+
+      pdf.setFont('helvetica', 'bold');
+      addText('ПРЕДМЕТ ДОГОВОРА', 12, 'center');
+      pdf.setFont('helvetica', 'normal');
+      y += 3;
+
+      addText('1. Займодавец передает в собственность Заемщику денежные средства в размере ' + loanAmount.toLocaleString('ru-RU') + ' (' + numberToWords(loanAmount) + ') рублей, а Заемщик обязуется вернуть указанную сумму с процентами в установленный настоящим Договором срок.');
+      y += 2;
+
+      addText('2. Настоящий договор займа НЕ является беспроцентным. Процентная ставка составляет 2% (два процента) в день.');
+      y += 2;
+
+      addText('3. В момент получения от Займодавца денежных средств Заемщик обязан написать Займодавцу расписку в их получении.');
+      y += 2;
+
+      addText('4. Заемщик обязан вернуть всю сумму займа, указанную в п. 1 настоящего договора, вместе с начисленными процентами не позднее "' + returnDateStr + '" г.');
+      y += 2;
+
+      addText('5. По желанию Заемщика сумма займа может быть возвращена досрочно либо возвращаться частями, но не позднее срока, указанного в п. 4 настоящего договора.');
+      y += 2;
+
+      addText('6. В случае нарушения Заемщиком срока возврата суммы займа, указанного в п. 4 настоящего договора, он обязан уплатить Займодавцу неустойку (пени) в размере 0,1% от всей суммы займа за каждый день просрочки. Неустойка начисляется до момента возврата всей суммы займа, но не может составлять более 100% суммы займа.');
+      y += 2;
+
+      addText('7. Настоящий договор считается заключенным с момента фактической передачи Займодавцем Заемщику суммы займа.');
+      y += 2;
+
+      addText('8. Договор составлен в двух экземплярах, имеющих одинаковую юридическую силу, по одному экземпляру для каждой из сторон.');
+      y += 5;
+
+      pdf.setFont('helvetica', 'bold');
+      addText('ПАРАМЕТРЫ ЗАЙМА', 12, 'center');
+      pdf.setFont('helvetica', 'normal');
+      y += 3;
+
+      addText('Сумма займа: ' + loanAmount.toLocaleString('ru-RU') + ' рублей');
+      addText('Срок займа: ' + loanDays + ' календарных дней');
+      addText('Процентная ставка: 2% (два процента) в день');
+      addText('Сумма процентов: ' + loan.totalInterest.toLocaleString('ru-RU') + ' рублей');
+      pdf.setFont('helvetica', 'bold');
+      addText('ОБЩАЯ СУММА К ВОЗВРАТУ: ' + contractData.totalAmount.toLocaleString('ru-RU') + ' рублей', 11);
+      pdf.setFont('helvetica', 'normal');
+      addText('Ежедневный платёж: ' + loan.dailyPayment.toLocaleString('ru-RU') + ' рублей');
+      addText('Дата выдачи займа: ' + contractData.contractDate);
+      addText('Дата возврата займа: ' + returnDateStr);
+      y += 5;
+
+      pdf.setFont('helvetica', 'bold');
+      addText('РЕКВИЗИТЫ ДЛЯ ВОЗВРАТА ЗАЙМА', 12, 'center');
+      pdf.setFont('helvetica', 'normal');
+      y += 3;
+
+      addText('Заемщик обязуется производить возврат займа и уплату процентов одним из следующих способов:');
+      y += 2;
+      pdf.setFont('helvetica', 'bold');
+      addText('1. ПЕРЕВОД НА БАНКОВСКУЮ КАРТУ:');
+      pdf.setFont('helvetica', 'normal');
+      addText('   Номер карты: 2200 9802 0524 3667');
+      addText('   Банк: Фора Банк');
+      addText('   Получатель: ООО "ЭКОРРА ФИНАНСОВЫЙ ЦЕНТР"');
+      y += 2;
+      pdf.setFont('helvetica', 'bold');
+      addText('2. ПЕРЕВОД ПО СИСТЕМЕ БЫСТРЫХ ПЛАТЕЖЕЙ (СБП):');
+      pdf.setFont('helvetica', 'normal');
+      addText('   Номер телефона: +7 (958) 684-12-76');
+      addText('   Банк: Фора Банк');
+      addText('   Получатель: ООО "ЭКОРРА ФИНАНСОВЫЙ ЦЕНТР"');
+      y += 2;
+      pdf.setFont('helvetica', 'bold');
+      addText('ВАЖНО: При оплате в назначении платежа обязательно указывать:');
+      pdf.setFont('helvetica', 'normal');
+      addText('"Возврат займа по договору №' + contractNumber + ', ' + contractData.fullName + '"');
+      y += 5;
+
+      pdf.setFont('helvetica', 'bold');
+      addText('ПОЛНЫЕ ДАННЫЕ ЗАЕМЩИКА', 12, 'center');
+      pdf.setFont('helvetica', 'normal');
+      y += 3;
+
+      addText('ФИО: ' + contractData.fullName);
+      addText('Дата рождения: ' + contractData.birthDate);
+      addText('Паспорт: серия ' + contractData.passportSeries + ', номер ' + contractData.passportNumber);
+      addText('Адрес проживания: ' + contractData.address);
+      addText('Контактный телефон: ' + contractData.phone);
+      y += 5;
+
+      addText('Заемщик ' + contractData.fullName + ' подтверждает получение суммы займа в размере ' + loanAmount.toLocaleString('ru-RU') + ' рублей и обязуется вернуть указанную сумму с процентами в размере ' + contractData.totalAmount.toLocaleString('ru-RU') + ' рублей в установленный срок до ' + returnDateStr + ' на указанные выше реквизиты.');
+      y += 5;
+
+      pdf.setFont('helvetica', 'bold');
+      addText('ПОДПИСИ СТОРОН:', 12, 'center');
+      pdf.setFont('helvetica', 'normal');
+      y += 5;
+
+      pdf.text('Займодавец', margin, y);
+      pdf.text('___________________', pageWidth - margin - 50, y);
+      y += lineHeight;
+      pdf.setFontSize(9);
+      pdf.text('(ООО "ЭКОРРА ФИНАНСОВЫЙ ЦЕНТР")', margin, y);
+      pdf.text('(подпись)', pageWidth - margin - 50, y);
+      y += 8;
+
+      pdf.setFontSize(10);
+      pdf.text('Заемщик', margin, y);
+      pdf.text('___________________', pageWidth - margin - 50, y);
+      y += lineHeight;
+      pdf.setFontSize(9);
+      pdf.text('(' + contractData.fullName + ')', margin, y);
+      pdf.text('(подпись)', pageWidth - margin - 50, y);
+      y += 5;
+
+      pdf.setFontSize(10);
+      addText('Дата: ' + contractData.contractDate, 10, 'center');
+
+      const fileName = `Договор_займа_${contractNumber}_${contractData.fullName.replace(/\s+/g, '_')}.pdf`;
+      pdf.save(fileName);
+    } catch (error) {
+      console.error('Ошибка при создании PDF:', error);
+      alert('Ошибка при создании договора. Попробуйте ещё раз.');
+    }
+  };
+
+  const downloadContractOld = () => {
     const contractNumber = Math.floor(Math.random() * 10000);
     const returnDate = new Date();
     returnDate.setDate(returnDate.getDate() + loanDays);
