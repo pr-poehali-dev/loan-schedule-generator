@@ -1,13 +1,11 @@
 import { useState, useRef } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Icon from '@/components/ui/icon';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import LoanCalculator from '@/components/LoanCalculator';
+import PaymentSchedule from '@/components/PaymentSchedule';
+import ContractForm from '@/components/ContractForm';
 
 interface PaymentScheduleItem {
   day: number;
@@ -590,348 +588,41 @@ ________________________________________________________________________________
           </TabsList>
 
           <TabsContent value="calculator" className="animate-slide-up">
-            <Card className="shadow-lg border-2 border-primary/10">
-              <CardHeader className="bg-gradient-to-r from-primary to-secondary text-white rounded-t-lg">
-                <CardTitle className="flex items-center gap-2 text-2xl">
-                  <Icon name="Calculator" size={28} />
-                  Калькулятор займа
-                </CardTitle>
-                <CardDescription className="text-blue-50">
-                  Рассчитайте свой займ под 2% в день
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-6 space-y-8">
-                <div className="space-y-4">
-                  <div>
-                    <Label className="text-lg font-semibold mb-3 block">
-                      Сумма займа: <span className="text-primary">{loanAmount.toLocaleString('ru-RU')} ₽</span>
-                    </Label>
-                    <Slider
-                      value={[loanAmount]}
-                      onValueChange={(value) => setLoanAmount(value[0])}
-                      min={10000}
-                      max={200000}
-                      step={5000}
-                      className="mt-2"
-                    />
-                    <div className="flex justify-between text-sm text-muted-foreground mt-2">
-                      <span>10 000 ₽</span>
-                      <span>200 000 ₽</span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label className="text-lg font-semibold mb-3 block">
-                      Срок займа: <span className="text-primary">{loanDays} дней</span>
-                    </Label>
-                    <Slider
-                      value={[loanDays]}
-                      onValueChange={(value) => setLoanDays(value[0])}
-                      min={7}
-                      max={90}
-                      step={1}
-                      className="mt-2"
-                    />
-                    <div className="flex justify-between text-sm text-muted-foreground mt-2">
-                      <span>7 дней</span>
-                      <span>90 дней</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 bg-gradient-to-br from-blue-50 to-slate-50 rounded-xl border border-primary/20">
-                  <div className="text-center p-4 bg-white rounded-lg shadow-sm">
-                    <Icon name="Wallet" className="mx-auto mb-2 text-primary" size={24} />
-                    <p className="text-sm text-muted-foreground mb-1">Сумма займа</p>
-                    <p className="text-2xl font-bold text-primary">{loanAmount.toLocaleString('ru-RU')} ₽</p>
-                  </div>
-                  <div className="text-center p-4 bg-white rounded-lg shadow-sm">
-                    <Icon name="Percent" className="mx-auto mb-2 text-secondary" size={24} />
-                    <p className="text-sm text-muted-foreground mb-1">Проценты</p>
-                    <p className="text-2xl font-bold text-secondary">{loan.totalInterest.toLocaleString('ru-RU')} ₽</p>
-                  </div>
-                  <div className="text-center p-4 bg-white rounded-lg shadow-sm">
-                    <Icon name="Coins" className="mx-auto mb-2 text-green-600" size={24} />
-                    <p className="text-sm text-muted-foreground mb-1">К возврату</p>
-                    <p className="text-2xl font-bold text-green-600">{loan.totalAmount.toLocaleString('ru-RU')} ₽</p>
-                  </div>
-                </div>
-
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <p className="text-sm text-blue-900">
-                    <Icon name="Info" className="inline mr-2" size={16} />
-                    Ежедневный платёж: <span className="font-bold">{loan.dailyPayment.toLocaleString('ru-RU')} ₽</span>
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <LoanCalculator
+              loanAmount={loanAmount}
+              loanDays={loanDays}
+              onLoanAmountChange={setLoanAmount}
+              onLoanDaysChange={setLoanDays}
+              totalInterest={loan.totalInterest}
+              totalAmount={loan.totalAmount}
+              dailyPayment={loan.dailyPayment}
+            />
           </TabsContent>
 
           <TabsContent value="schedule" className="animate-slide-up">
-            <Card className="shadow-lg border-2 border-primary/10">
-              <CardHeader className="bg-gradient-to-r from-primary to-secondary text-white rounded-t-lg">
-                <CardTitle className="flex items-center gap-2 text-2xl">
-                  <Icon name="LineChart" size={28} />
-                  График платежей
-                </CardTitle>
-                <CardDescription className="text-blue-50">
-                  Подробный план выплат по займу
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div ref={scheduleRef} className="bg-white p-6">
-                  <div className="mb-6">
-                    <h2 className="text-2xl font-bold text-center text-primary mb-2">
-                      ГРАФИК ПЛАТЕЖЕЙ ПО ЗАЙМУ
-                    </h2>
-                    <p className="text-center text-sm text-muted-foreground">
-                      ООО "ЭКОРРА ФИНАНСОВЫЙ ЦЕНТР"
-                    </p>
-                    <p className="text-center text-xs text-muted-foreground mt-1">
-                      Дата формирования: {new Date().toLocaleDateString('ru-RU')}
-                    </p>
-                  </div>
-
-                  <div className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="bg-gradient-to-br from-blue-50 to-white p-4 rounded-lg border border-blue-200">
-                      <p className="text-xs text-muted-foreground mb-1">Сумма займа</p>
-                      <p className="text-xl font-bold text-primary">{loanAmount.toLocaleString('ru-RU')} ₽</p>
-                    </div>
-                    <div className="bg-gradient-to-br from-green-50 to-white p-4 rounded-lg border border-green-200">
-                      <p className="text-xs text-muted-foreground mb-1">Общая сумма</p>
-                      <p className="text-xl font-bold text-green-600">{loan.totalAmount.toLocaleString('ru-RU')} ₽</p>
-                    </div>
-                    <div className="bg-gradient-to-br from-purple-50 to-white p-4 rounded-lg border border-purple-200">
-                      <p className="text-xs text-muted-foreground mb-1">Проценты</p>
-                      <p className="text-xl font-bold text-purple-600">{loan.totalInterest.toLocaleString('ru-RU')} ₽</p>
-                    </div>
-                    <div className="bg-gradient-to-br from-orange-50 to-white p-4 rounded-lg border border-orange-200">
-                      <p className="text-xs text-muted-foreground mb-1">Срок</p>
-                      <p className="text-xl font-bold text-orange-600">{loanDays} дней</p>
-                    </div>
-                  </div>
-
-                  <div className="overflow-x-auto -mx-6 px-6">
-                    <div className="rounded-lg border border-slate-200">
-                      <table className="w-full text-sm min-w-[600px]">
-                        <thead className="bg-gradient-to-r from-primary to-secondary text-white">
-                          <tr>
-                            <th className="p-2 md:p-3 text-left font-semibold">День</th>
-                            <th className="p-2 md:p-3 text-right font-semibold">Платёж</th>
-                            <th className="p-2 md:p-3 text-right font-semibold">Основной долг</th>
-                            <th className="p-2 md:p-3 text-right font-semibold">Проценты</th>
-                            <th className="p-2 md:p-3 text-right font-semibold">Остаток</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {schedule.map((item, index) => (
-                            <tr
-                              key={item.day}
-                              className={`border-b hover:bg-blue-50 transition-colors ${
-                                index % 2 === 0 ? 'bg-white' : 'bg-slate-50'
-                              }`}
-                            >
-                              <td className="p-2 md:p-3 font-medium">{item.day}</td>
-                              <td className="p-2 md:p-3 text-right font-semibold text-green-600 whitespace-nowrap">
-                                {item.payment.toLocaleString('ru-RU')} ₽
-                              </td>
-                              <td className="p-2 md:p-3 text-right whitespace-nowrap">{item.principal.toLocaleString('ru-RU')} ₽</td>
-                              <td className="p-2 md:p-3 text-right text-orange-600 whitespace-nowrap">
-                                {item.interest.toLocaleString('ru-RU')} ₽
-                              </td>
-                              <td className="p-2 md:p-3 text-right font-medium whitespace-nowrap">
-                                {item.balance.toLocaleString('ru-RU')} ₽
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-
-                  <div className="mt-6 grid grid-cols-3 gap-4 border-t pt-4">
-                    <div className="text-center">
-                      <p className="text-xs text-muted-foreground mb-1">Всего платежей</p>
-                      <p className="text-lg font-bold">{loanDays}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs text-muted-foreground mb-1">Общая сумма выплат</p>
-                      <p className="text-lg font-bold text-green-600">{loan.totalAmount.toLocaleString('ru-RU')} ₽</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs text-muted-foreground mb-1">Переплата</p>
-                      <p className="text-lg font-bold text-orange-600">{loan.totalInterest.toLocaleString('ru-RU')} ₽</p>
-                    </div>
-                  </div>
-
-                  <div className="mt-6 text-center text-xs text-muted-foreground border-t pt-4">
-                    <p>© 2024 ООО "ЭКОРРА ФИНАНСОВЫЙ ЦЕНТР"</p>
-                  </div>
-                </div>
-
-                <div className="mt-6">
-                  <Button
-                    onClick={downloadPaymentSchedule}
-                    className="w-full bg-gradient-to-r from-primary to-secondary hover:opacity-90 text-base py-6"
-                  >
-                    <Icon name="Download" className="mr-2" size={20} />
-                    Скачать график платежей (PDF)
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <PaymentSchedule
+              scheduleRef={scheduleRef}
+              loanAmount={loanAmount}
+              loanDays={loanDays}
+              totalAmount={loan.totalAmount}
+              totalInterest={loan.totalInterest}
+              schedule={schedule}
+              onDownload={downloadPaymentSchedule}
+            />
           </TabsContent>
 
           <TabsContent value="contract" className="animate-slide-up">
-            <Card className="shadow-lg border-2 border-primary/10">
-              <CardHeader className="bg-gradient-to-r from-primary to-secondary text-white rounded-t-lg">
-                <CardTitle className="flex items-center gap-2 text-2xl">
-                  <Icon name="FileText" size={28} />
-                  Оформление договора займа
-                </CardTitle>
-                <CardDescription className="text-blue-50">
-                  Заполните данные для формирования договора
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-6 space-y-6">
-                <div className="grid gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="fullName" className="text-base font-semibold">
-                      ФИО полностью
-                    </Label>
-                    <Input
-                      id="fullName"
-                      placeholder="Иванов Иван Иванович"
-                      value={contractData.fullName}
-                      onChange={(e) => setContractData({ ...contractData, fullName: e.target.value })}
-                      className="text-base"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="birthDate" className="text-base font-semibold">
-                      Дата рождения
-                    </Label>
-                    <Input
-                      id="birthDate"
-                      type="date"
-                      value={contractData.birthDate}
-                      onChange={(e) => setContractData({ ...contractData, birthDate: e.target.value })}
-                      className="text-base"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="passportSeries" className="text-base font-semibold">
-                        Серия паспорта
-                      </Label>
-                      <Input
-                        id="passportSeries"
-                        placeholder="1234"
-                        maxLength={4}
-                        value={contractData.passportSeries}
-                        onChange={(e) => setContractData({ ...contractData, passportSeries: e.target.value })}
-                        className="text-base"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="passportNumber" className="text-base font-semibold">
-                        Номер паспорта
-                      </Label>
-                      <Input
-                        id="passportNumber"
-                        placeholder="567890"
-                        maxLength={6}
-                        value={contractData.passportNumber}
-                        onChange={(e) => setContractData({ ...contractData, passportNumber: e.target.value })}
-                        className="text-base"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="address" className="text-base font-semibold">
-                      Адрес проживания
-                    </Label>
-                    <Input
-                      id="address"
-                      placeholder="г. Москва, ул. Ленина, д. 1, кв. 1"
-                      value={contractData.address}
-                      onChange={(e) => setContractData({ ...contractData, address: e.target.value })}
-                      className="text-base"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="phone" className="text-base font-semibold">
-                      Контактный телефон
-                    </Label>
-                    <Input
-                      id="phone"
-                      placeholder="+7 (999) 123-45-67"
-                      value={contractData.phone}
-                      onChange={(e) => setContractData({ ...contractData, phone: e.target.value })}
-                      className="text-base"
-                    />
-                  </div>
-                </div>
-
-                <div className="bg-gradient-to-br from-blue-50 to-slate-50 p-6 rounded-xl border border-primary/20 space-y-3">
-                  <h3 className="font-bold text-lg text-primary mb-4">Параметры займа</h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">Сумма займа:</p>
-                      <p className="font-bold text-lg">{loanAmount.toLocaleString('ru-RU')} ₽</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Срок:</p>
-                      <p className="font-bold text-lg">{loanDays} дней</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Процентная ставка:</p>
-                      <p className="font-bold text-lg">2% в день</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">К возврату:</p>
-                      <p className="font-bold text-lg text-green-600">{loan.totalAmount.toLocaleString('ru-RU')} ₽</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Button
-                    onClick={handleGenerateContract}
-                    className="flex-1 bg-gradient-to-r from-primary to-secondary hover:opacity-90 text-base py-6"
-                  >
-                    <Icon name="FileCheck" className="mr-2" size={20} />
-                    Сформировать договор
-                  </Button>
-                  <Button
-                    onClick={downloadContract}
-                    variant="outline"
-                    className="flex-1 border-2 border-primary text-primary hover:bg-primary hover:text-white text-base py-6"
-                  >
-                    <Icon name="Download" className="mr-2" size={20} />
-                    Скачать договор
-                  </Button>
-                </div>
-
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                  <p className="text-sm text-amber-900">
-                    <Icon name="AlertCircle" className="inline mr-2" size={16} />
-                    Перед скачиванием убедитесь, что все данные заполнены корректно
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <ContractForm
+              contractData={contractData}
+              loanAmount={loanAmount}
+              loanDays={loanDays}
+              totalAmount={loan.totalAmount}
+              onContractDataChange={setContractData}
+              onGenerateContract={handleGenerateContract}
+              onDownloadContract={downloadContract}
+            />
           </TabsContent>
         </Tabs>
-
-        <div className="mt-8 text-center text-sm text-muted-foreground">
-          <p>© 2024 МикроФинанс. Современные решения для быстрых займов</p>
-        </div>
       </div>
     </div>
   );
