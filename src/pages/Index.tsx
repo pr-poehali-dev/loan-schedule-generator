@@ -688,16 +688,16 @@ ________________________________________________________________________________
                     </div>
                   </div>
 
-                  <div className="overflow-x-auto">
-                    <div className="max-h-[500px] overflow-y-auto rounded-lg border border-slate-200">
-                      <table className="w-full text-sm">
-                        <thead className="sticky top-0 bg-gradient-to-r from-primary to-secondary text-white">
+                  <div className="overflow-x-auto -mx-6 px-6">
+                    <div className="rounded-lg border border-slate-200">
+                      <table className="w-full text-sm min-w-[600px]">
+                        <thead className="bg-gradient-to-r from-primary to-secondary text-white">
                           <tr>
-                            <th className="p-3 text-left font-semibold">День</th>
-                            <th className="p-3 text-right font-semibold">Платёж</th>
-                            <th className="p-3 text-right font-semibold">Основной долг</th>
-                            <th className="p-3 text-right font-semibold">Проценты</th>
-                            <th className="p-3 text-right font-semibold">Остаток</th>
+                            <th className="p-2 md:p-3 text-left font-semibold">День</th>
+                            <th className="p-2 md:p-3 text-right font-semibold">Платёж</th>
+                            <th className="p-2 md:p-3 text-right font-semibold">Основной долг</th>
+                            <th className="p-2 md:p-3 text-right font-semibold">Проценты</th>
+                            <th className="p-2 md:p-3 text-right font-semibold">Остаток</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -708,15 +708,15 @@ ________________________________________________________________________________
                                 index % 2 === 0 ? 'bg-white' : 'bg-slate-50'
                               }`}
                             >
-                              <td className="p-3 font-medium">{item.day}</td>
-                              <td className="p-3 text-right font-semibold text-green-600">
+                              <td className="p-2 md:p-3 font-medium">{item.day}</td>
+                              <td className="p-2 md:p-3 text-right font-semibold text-green-600 whitespace-nowrap">
                                 {item.payment.toLocaleString('ru-RU')} ₽
                               </td>
-                              <td className="p-3 text-right">{item.principal.toLocaleString('ru-RU')} ₽</td>
-                              <td className="p-3 text-right text-orange-600">
+                              <td className="p-2 md:p-3 text-right whitespace-nowrap">{item.principal.toLocaleString('ru-RU')} ₽</td>
+                              <td className="p-2 md:p-3 text-right text-orange-600 whitespace-nowrap">
                                 {item.interest.toLocaleString('ru-RU')} ₽
                               </td>
-                              <td className="p-3 text-right font-medium">
+                              <td className="p-2 md:p-3 text-right font-medium whitespace-nowrap">
                                 {item.balance.toLocaleString('ru-RU')} ₽
                               </td>
                             </tr>
