@@ -472,20 +472,35 @@ ________________________________________________________________________________
 
     try {
       const element = scheduleRef.current;
+      const originalOverflow = element.style.overflow;
+      const originalHeight = element.style.height;
+      const originalMaxHeight = element.style.maxHeight;
+      
+      element.style.overflow = 'visible';
+      element.style.height = 'auto';
+      element.style.maxHeight = 'none';
+      
+      await new Promise(resolve => setTimeout(resolve, 100));
       
       const canvas = await html2canvas(element, {
-        scale: 3,
+        scale: 2,
         backgroundColor: '#ffffff',
         logging: false,
         useCORS: true,
         allowTaint: true,
-        scrollY: -window.scrollY,
-        scrollX: -window.scrollX,
+        scrollY: 0,
+        scrollX: 0,
+        width: element.scrollWidth,
+        height: element.scrollHeight,
         windowWidth: element.scrollWidth,
         windowHeight: element.scrollHeight
       });
 
-      const imgData = canvas.toDataURL('image/jpeg', 1.0);
+      element.style.overflow = originalOverflow;
+      element.style.height = originalHeight;
+      element.style.maxHeight = originalMaxHeight;
+
+      const imgData = canvas.toDataURL('image/png', 1.0);
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
@@ -495,20 +510,20 @@ ________________________________________________________________________________
 
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pdfWidth - 10;
+      const margin = 10;
+      const imgWidth = pdfWidth - 2 * margin;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
       
-      const margin = 5;
       let heightLeft = imgHeight;
       let position = margin;
 
-      pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight, undefined, 'FAST');
+      pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight, undefined, 'FAST');
       heightLeft -= (pdfHeight - 2 * margin);
 
       while (heightLeft > 0) {
-        position = heightLeft - imgHeight + margin;
+        position = -(pdfHeight - margin) + (imgHeight - heightLeft);
         pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight, undefined, 'FAST');
+        pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight, undefined, 'FAST');
         heightLeft -= (pdfHeight - 2 * margin);
       }
 
