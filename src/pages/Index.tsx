@@ -472,15 +472,28 @@ ________________________________________________________________________________
 
     try {
       const element = scheduleRef.current;
-      const originalOverflow = element.style.overflow;
+      const container = element.querySelector('.overflow-x-auto');
+      const table = element.querySelector('table');
+      
+      const originalContainerOverflow = container ? (container as HTMLElement).style.overflow : '';
+      const originalElementOverflow = element.style.overflow;
       const originalHeight = element.style.height;
       const originalMaxHeight = element.style.maxHeight;
+      const originalWidth = element.style.width;
       
+      if (container) {
+        (container as HTMLElement).style.overflow = 'visible';
+      }
       element.style.overflow = 'visible';
       element.style.height = 'auto';
       element.style.maxHeight = 'none';
+      element.style.width = 'max-content';
+      element.style.minWidth = '800px';
       
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      const fullWidth = Math.max(element.scrollWidth, table ? table.scrollWidth : 0, 800);
+      const fullHeight = element.scrollHeight;
       
       const canvas = await html2canvas(element, {
         scale: 2,
@@ -490,15 +503,25 @@ ________________________________________________________________________________
         allowTaint: true,
         scrollY: 0,
         scrollX: 0,
-        width: element.scrollWidth,
-        height: element.scrollHeight,
-        windowWidth: element.scrollWidth,
-        windowHeight: element.scrollHeight
+        width: fullWidth,
+        height: fullHeight,
+        windowWidth: fullWidth,
+        windowHeight: fullHeight,
+        onclone: (clonedDoc) => {
+          const clonedElement = clonedDoc.querySelector('[data-html2canvas-cloned]');
+          if (clonedElement) {
+            (clonedElement as HTMLElement).style.width = fullWidth + 'px';
+          }
+        }
       });
 
-      element.style.overflow = originalOverflow;
+      if (container) {
+        (container as HTMLElement).style.overflow = originalContainerOverflow;
+      }
+      element.style.overflow = originalElementOverflow;
       element.style.height = originalHeight;
       element.style.maxHeight = originalMaxHeight;
+      element.style.width = originalWidth;
 
       const imgData = canvas.toDataURL('image/png', 1.0);
       const pdf = new jsPDF({
